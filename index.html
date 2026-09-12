@@ -462,24 +462,6 @@
     load();
     refreshCount();
     setInterval(refreshCount, 60000);
-    <!-- MÚSICA DE FUNDO -->
-<audio id="musicaFundo" loop>
-    <source src="musica.mp3" type="audio/mpeg">
-    O teu navegador não suporta áudio.
-</audio>
-
-<script>
-const musica = document.getElementById("musicaFundo");
-
-// Volume da música: 0.0 = silêncio | 1.0 = máximo
-musica.volume = 0.25;
-
-// Tenta iniciar automaticamente
-window.addEventListener("load", () => {
-    musica.play().catch(() => {
-        console.log("O navegador bloqueou o autoplay.");
-    });
-});
 </script>
   </script>
 </body>
