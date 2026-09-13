@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FUTCOM — Estúdio da Live</title>
+  <style>
+    :root {
+      --bg: #050505;
+      --top: #2a2a2a;
+      --text: #ffffff;
+      --muted: #bdbdbd;
+      --accent: #e11d48;
+      --status: #3ea6ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #111; color: #fff; font-family: Arial, Helvetica, sans-serif; }
+    body { display: flex; }
+
+    .panel {
+      width: 340px;
+      min-width: 300px;
+      height: 100%;
+      background: #171717;
+      border-right: 1px solid #2a2a2a;
+      padding: 16px;
+      overflow: auto;
+    }
+    .panel h1 { font-size: 16px; margin-bottom: 4px; }
+    .panel p { color: #9a9a9a; font-size: 12px; margin-bottom: 14px; line-height: 1.4; }
+    label { display: block; font-size: 11px; color: #aaa; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: .4px; }
+    input[type="text"], input[type="number"], input[type="url"], input[type="range"], select {
+      width: 100%;
+      background: #101010;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+    input[type="range"] { padding: 6px 0; }
+    .colors { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .check { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: #ddd; text-transform: none; letter-spacing: 0; }
+    .check input { width: auto; }
+    .btn-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+    button { border: 0; border-radius: 8px; padding: 9px 12px; cursor: pointer; font-weight: 700; }
+    .go { background: #e11d48; color: #fff; }
+    .ghost { background: #2a2a2a; color: #fff; }
+    .ok { color: #86efac; font-size: 12px; margin-top: 8px; min-height: 16px; }
+    .warn { color: #fbbf24; font-size: 12px; margin-top: 8px; }
+
+    .preview-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .preview-bar {
+      padding: 8px 12px; background: #0d0d0d; font-size: 12px; color: #aaa;
+      display: flex; justify-content: space-between; gap: 10px;
+    }
+    .screen { flex: 1; display: flex; align-items: center; justify-content: center; padding: 16px; background: #0a0a0a; }
+    .frame {
+      width: min(100%, 1100px);
+      aspect-ratio: 16 / 9;
+      background: var(--bg);
+      color: var(--text);
+      position: relative;
+      overflow: hidden;
+      border-radius: 6px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.45);
+    }
+    .topbar {
+      height: 14%;
+      background: var(--top);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 3;
+    }
+    .status {
+      position: absolute; left: 2.2%; top: 18%;
+      display: flex; align-items: center; gap: 8px;
+      color: var(--muted); font-size: clamp(10px, 1.4vw, 15px);
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--status); animation: pulse 1.6s infinite; }
+    @keyframes pulse { 50% { opacity: .3; } }
+    .yt { width: 28px; height: 20px; border-radius: 6px; background: #fff; display: grid; place-items: center; }
+    .yt i {
+      width: 0; height: 0;
+      border-left: 8px solid #222;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+      margin-left: 2px;
+    }
+    .stage {
+      height: 86%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+    }
+    .logo-wrap {
+      width: clamp(64px, 9vw, 96px);
+      height: clamp(64px, 9vw, 96px);
+      border-radius: 50%;
+      background: #111;
+      border: 6px solid #1a1a1a;
+      display: grid;
+      place-items: center;
+      margin-top: -8%;
+      overflow: hidden;
+      z-index: 2;
+    }
+    .logo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .shield {
+      width: 72%; height: 72%; border-radius: 50%;
+      background: #fff; color: #111;
+      display: grid; place-items: center;
+      font-weight: 800; font-size: clamp(14px, 2vw, 22px);
+    }
+    .brand { margin-top: 10px; font-weight: 800; letter-spacing: 2px; font-size: clamp(16px, 2.2vw, 24px); z-index: 2; }
+    .count {
+      margin-top: 7%;
+      font-size: clamp(48px, 10vw, 118px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1;
+      z-index: 2;
+    }
+    .count.pop { animation: goalPop .55s ease; }
+    @keyframes goalPop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.08); text-shadow: 0 0 24px rgba(255,255,255,.45); }
+      100% { transform: scale(1); }
+    }
+    .label { margin-top: 6px; color: var(--muted); font-size: clamp(14px, 2vw, 22px); z-index: 2; }
+    .ticker {
+      position: absolute; bottom: 7.5%; left: 0; right: 0;
+      text-align: center; font-size: clamp(12px, 1.7vw, 18px); z-index: 3;
+    }
+    .live-dot {
+      display: inline-block; width: 10px; height: 10px;
+      background: var(--accent); border-radius: 50%; margin-right: 8px;
+    }
+
+    .fx { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+    .pitch {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 22%;
+      background:
+        linear-gradient(180deg, transparent, rgba(20,90,30,.22) 30%, rgba(16,70,24,.38)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.04) 0 48px, rgba(255,255,255,.01) 48px 96px);
+      border-top: 2px solid rgba(255,255,255,.12);
+    }
+    .midline {
+      position: absolute; left: 50%; bottom: 0; width: 2px; height: 22%;
+      background: rgba(255,255,255,.18); transform: translateX(-50%);
+    }
+    .circle {
+      position: absolute; left: 50%; bottom: 2%;
+      width: 90px; height: 90px; border: 2px solid rgba(255,255,255,.16);
+      border-radius: 50%; transform: translate(-50%, 45%);
+    }
+    .spot {
+      position: absolute; width: 42%; height: 70%;
+      background: radial-gradient(circle, rgba(255,255,255,.08), transparent 68%);
+      top: 8%; opacity: .8;
+      animation: sweep 9s ease-in-out infinite;
+    }
+    .spot.b { left: auto; right: -8%; animation-delay: -4s; }
+    .spot.a { left: -8%; }
+    @keyframes sweep {
+      0%, 100% { transform: translateX(0) scale(1); opacity: .25; }
+      50% { transform: translateX(18%) scale(1.08); opacity: .55; }
+    }
+
+    .ball {
+      position: absolute;
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background:
+        var(--ball-img, none),
+        radial-gradient(circle at 30% 30%, var(--ball-light, #fff), var(--ball-mid, #ddd) 40%, var(--ball-dark, #bbb));
+      background-size: cover;
+      background-position: center;
+      box-shadow: 0 6px 12px rgba(0,0,0,.35);
+      animation: floatBall 11s linear infinite;
+    }
+    .ball::before {
+      content: "";
+      position: absolute; inset: 6px;
+      border-radius: 50%;
+      background:
+        conic-gradient(var(--ball-pattern, #111) 0 20%, transparent 20% 33%, var(--ball-pattern, #111) 33% 53%, transparent 53% 66%, var(--ball-pattern, #111) 66% 86%, transparent 86% 100%);
+      opacity: var(--ball-pattern-op, .55);
+      animation: spin 2.8s linear infinite;
+    }
+    .ball.b { width: 22px; height: 22px; animation-duration: 15s; animation-delay: -5s; }
+    .ball.c { width: 16px; height: 16px; animation-duration: 18s; animation-delay: -9s; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes floatBall {
+      0% { left: -8%; top: 62%; transform: translateY(0); }
+      25% { top: 28%; transform: translateY(-16px); }
+      50% { left: 50%; top: 18%; transform: translateY(8px); }
+      75% { top: 36%; transform: translateY(-10px); }
+      100% { left: 108%; top: 58%; transform: translateY(0); }
+    }
+
+    .flag {
+      position: absolute; bottom: 20%; width: 3px; height: 46px;
+      background: #ddd;
+    }
+    .flag::after {
+      content: "";
+      position: absolute; top: 0; left: 3px;
+      width: 18px; height: 12px;
+      background: var(--accent);
+      animation: flagWave .9s ease-in-out infinite alternate;
+    }
+    .flag.l { left: 6%; }
+    .flag.r { right: 6%; }
+    .flag.r::after { left: auto; right: 3px; }
+    @keyframes flagWave { to { transform: skewX(-12deg) scaleX(1.05); } }
+
+    .burst span {
+      position: absolute;
+      width: 7px; height: 7px; border-radius: 50%;
+      animation: burst 900ms ease-out forwards;
+    }
+    @keyframes burst {
+      0% { transform: translate(0,0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--x), var(--y)) scale(.2); opacity: 0; }
+    }
+
+    body.no-fx .fx { display: none; }
+    body.stream { display: block; background: var(--bg); }
+    body.stream .panel,
+    body.stream .preview-bar { display: none; }
+    body.stream .preview-wrap,
+    body.stream .screen { height: 100%; padding: 0; }
+    body.stream .frame { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; box-shadow: none; }
+  </style>
+</head>
+<body>
+  <aside class="panel">
+    <h1>Personalizar tela FUTCOM</h1>
+    <p>Edita à esquerda. À direita vês a live. Podes ligar animações de futebol e o contador de inscritos.</p>
+
+    <label>Nome do canal</label>
+    <input id="brand" type="text" value="FUTCOM" />
+
+    <label>Letras do logo</label>
+    <input id="logoText" type="text" value="FF" maxlength="3" />
+
+    <label>URL do logo (opcional)</label>
+    <input id="logoUrl" type="url" placeholder="https://.../logo.png" value="channels4_profile-photoaidcom-cropped.jpg" />
+
+    <label>Texto debaixo do número</label>
+    <input id="label" type="text" value="Inscritos" />
+
+    <label>Texto de estado</label>
+    <input id="statusText" type="text" value="Ao vivo" />
+
+    <label>Meta de inscritos</label>
+    <input id="goal" type="number" value="4000" />
+
+    <label>Faixa de baixo</label>
+    <input id="ticker" type="text" placeholder="automático com a meta" />
+
+    <label>Número inicial</label>
+    <input id="fallback" type="number" value="3673" />
+
+    <label>Estilo de animação</label>
+    <select id="fxStyle">
+      <option value="full">Campo + bolas + holofotes</option>
+      <option value="balls">Só bolas a voar</option>
+      <option value="pitch">Só relvado</option>
+      <option value="off">Sem animações</option>
+    </select>
+
+    <label class="check"><input id="fxGoal" type="checkbox" checked /> Animação de golo quando sobe um inscrito</label>
+
+    <label>Estilo da bola</label>
+    <select id="ballStyle">
+      <option value="classic">Clássica branca</option>
+      <option value="yellow">Amarela (treino)</option>
+      <option value="orange">Laranja</option>
+      <option value="red">Vermelha</option>
+      <option value="blue">Azul</option>
+      <option value="green">Verde</option>
+      <option value="pink">Rosa</option>
+      <option value="custom">Cor à escolha</option>
+      <option value="image">Imagem (URL ou ficheiro no GitHub)</option>
+    </select>
+    <div class="colors">
+      <div><label>Cor da bola</label><input id="ballColor" type="color" value="#ffffff" /></div>
+    </div>
+    <label>Imagem da bola (opcional)</label>
+    <input id="ballImg" type="url" placeholder="bola.png ou https://..." />
+
+    <div class="colors">
+      <div><label>Fundo</label><input id="bg" type="color" value="#050505" /></div>
+      <div><label>Barra de cima</label><input id="top" type="color" value="#2a2a2a" /></div>
+      <div><label>Texto</label><input id="text" type="color" value="#ffffff" /></div>
+      <div><label>Texto cinza</label><input id="muted" type="color" value="#bdbdbd" /></div>
+      <div><label>Bandeira / ponto</label><input id="accent" type="color" value="#e11d48" /></div>
+      <div><label>Ponto azul</label><input id="status" type="color" value="#3ea6ff" /></div>
+    </div>
+
+    <label>Música de fundo (ficheiro no GitHub)</label>
+    <input id="musicUrl" type="url" value="quietphase-ambient-calm-491578.mp3" />
+
+    <label>Volume da música (<span id="volLabel">35%</span>)</label>
+    <input id="musicVol" type="range" min="0" max="100" value="35" />
+
+    <label class="check"><input id="musicLoop" type="checkbox" checked /> Repetir em loop</label>
+    <label class="check"><input id="musicOn" type="checkbox" checked /> Música ligada</label>
+
+    <label>ID do canal YouTube</label>
+    <input id="channelId" type="text" placeholder="UCxxxxxxxxxxxxxxxxxxxxxx" />
+
+    <label>Chave da YouTube Data API v3</label>
+    <input id="apiKey" type="text" placeholder="AIza..." />
+
+    <div class="btn-row">
+      <button class="go" id="save">Guardar</button>
+      <button class="ghost" id="streamBtn">Modo live</button>
+      <button class="ghost" id="refresh">Atualizar agora</button>
+      <button class="ghost" id="demoGoal">Testar golo</button>
+      <button class="ghost" id="musicBtn">Tocar música</button>
+    </div>
+    <audio id="bgm" preload="auto" playsinline autoplay loop></audio>
+    <div class="ok" id="msg"></div>
+    <div class="warn">A animação de golo só dispara quando o YouTube confirma um inscrito novo. O número local nunca conta como golo. No modo live, Esc volta ao editor.</div>
+  </aside>
+
+  <main class="preview-wrap">
+    <div class="preview-bar">
+      <span>Pré-visualização 16:9</span>
+      <span id="apiState">Contador: número local</span>
+    </div>
+    <div class="screen">
+      <div class="frame" id="frame">
+        <div class="fx" id="fx">
+          <div class="spot a"></div>
+          <div class="spot b"></div>
+          <div class="pitch"></div>
+          <div class="midline"></div>
+          <div class="circle"></div>
+          <div class="flag l"></div>
+          <div class="flag r"></div>
+          <div class="ball"></div>
+          <div class="ball b"></div>
+          <div class="ball c"></div>
+          <div class="burst" id="burst"></div>
+        </div>
+        <div class="topbar">
+          <div class="status"><span class="dot"></span><span id="vStatus">Ao vivo</span></div>
+          <div class="yt"><i></i></div>
+        </div>
+        <div class="stage">
+          <div class="logo-wrap" id="logoWrap"><div class="shield" id="vLogo">FF</div></div>
+          <div class="brand" id="vBrand">FUTCOM</div>
+          <div class="count" id="vCount">3.673</div>
+          <div class="label" id="vLabel">Inscritos</div>
+          <div class="ticker"><span class="live-dot"></span><span id="vTicker">FUTCOM AO VIVO — META: 4.000 INSCRITOS</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const fields = ["brand","logoText","logoUrl","label","statusText","goal","ticker","fallback","bg","top","text","muted","accent","status","channelId","apiKey","fxStyle","musicUrl","musicVol","ballStyle","ballColor","ballImg"];
+    let lastYoutubeCount = null;
+    const DEFAULT_MUSIC = "quietphase-ambient-calm-491578.mp3";
+
+    function syncMusic() {
+      const audio = $("bgm");
+      const src = ($("musicUrl").value.trim() || DEFAULT_MUSIC);
+      const abs = new URL(src, location.href).href;
+      if (audio.dataset.src !== abs) {
+        audio.src = src;
+        audio.dataset.src = abs;
+      }
+      audio.loop = $("musicLoop").checked;
+      audio.volume = Math.max(0, Math.min(1, Number($("musicVol").value || 35) / 100));
+      $("volLabel").textContent = Math.round(audio.volume * 100) + "%";
+      if (!$("musicOn").checked) {
+        audio.pause();
+        $("musicBtn").textContent = "Tocar música";
+      }
+    }
+
+    let musicTries = 0;
+    let musicTimer = null;
+
+    function playMusic() {
+      $("musicOn").checked = true;
+      syncMusic();
+      const audio = $("bgm");
+      audio.loop = true;
+      const tryPlay = audio.play();
+      if (tryPlay && tryPlay.catch) {
+        tryPlay.then(() => {
+          $("musicBtn").textContent = "Parar música";
+          $("msg").textContent = "Música a tocar.";
+          musicTries = 0;
+          if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+        }).catch(() => {
+          $("musicBtn").textContent = "Tocar música";
+          $("msg").textContent = "A tentar começar a música sozinha...";
+        });
+      } else {
+        $("musicBtn").textContent = "Parar música";
+      }
+    }
+
+    function startMusicAuto() {
+      if (!$("musicOn").checked) return;
+      playMusic();
+      if (musicTimer) clearInterval(musicTimer);
+      musicTries = 0;
+      musicTimer = setInterval(() => {
+        const audio = $("bgm");
+        if (!audio.paused && audio.currentTime > 0) {
+          clearInterval(musicTimer);
+          musicTimer = null;
+          return;
+        }
+        musicTries += 1;
+        if (musicTries > 30) {
+          clearInterval(musicTimer);
+          musicTimer = null;
+          $("msg").textContent = "O Chrome bloqueou o som. No OBS a música entra; no Chrome clica uma vez na página.";
+          return;
+        }
+        playMusic();
+      }, 1000);
+    }
+
+    function toggleMusic() {
+      const audio = $("bgm");
+      if (!audio.paused) {
+        audio.pause();
+        $("musicOn").checked = false;
+        $("musicBtn").textContent = "Tocar música";
+        $("msg").textContent = "Música parada.";
+        return;
+      }
+      playMusic();
+    }
+
+    function formatPT(n) { return Number(n).toLocaleString("pt-PT"); }
+
+    function apply() {
+      const brand = $("brand").value.trim() || "FUTCOM";
+      const goal = Number($("goal").value || 4000);
+      document.documentElement.style.setProperty("--bg", $("bg").value);
+      document.documentElement.style.setProperty("--top", $("top").value);
+      document.documentElement.style.setProperty("--text", $("text").value);
+      document.documentElement.style.setProperty("--muted", $("muted").value);
+      document.documentElement.style.setProperty("--accent", $("accent").value);
+      document.documentElement.style.setProperty("--status", $("status").value);
+      $("vBrand").textContent = brand;
+      $("vLabel").textContent = $("label").value || "Inscritos";
+      $("vStatus").textContent = $("statusText").value || "Ao vivo";
+      $("vTicker").textContent = $("ticker").value.trim() || (brand + " AO VIVO — META: " + formatPT(goal) + " INSCRITOS");
+      const url = $("logoUrl").value.trim();
+      if (url) $("logoWrap").innerHTML = '<img alt="logo" src="' + url.replace(/"/g, "") + '">';
+      else {
+        $("logoWrap").innerHTML = '<div class="shield" id="vLogo"></div>';
+        $("vLogo").textContent = ($("logoText").value || "FF").slice(0, 3);
+      }
+      if (!$("vCount").dataset.live) $("vCount").textContent = formatPT($("fallback").value || 0);
+
+      const style = $("fxStyle").value;
+      document.body.classList.toggle("no-fx", style === "off");
+      const fx = $("fx");
+      fx.querySelector(".pitch").style.display = (style === "full" || style === "pitch") ? "" : "none";
+      fx.querySelector(".midline").style.display = (style === "full" || style === "pitch") ? "" : "none";
+      fx.querySelector(".circle").style.display = (style === "full" || style === "pitch") ? "" : "none";
+      fx.querySelectorAll(".spot, .flag").forEach((el) => el.style.display = style === "full" ? "" : "none");
+      fx.querySelectorAll(".ball").forEach((el) => el.style.display = (style === "full" || style === "balls") ? "" : "none");
+      applyBall();
+    }
+
+    function hexShade(hex, amt) {
+      hex = String(hex || "#ffffff").replace("#", "");
+      if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+      const n = parseInt(hex, 16);
+      if (!Number.isFinite(n)) return "#ffffff";
+      let r = (n >> 16) + amt;
+      let g = ((n >> 8) & 255) + amt;
+      let b = (n & 255) + amt;
+      r = Math.max(0, Math.min(255, r));
+      g = Math.max(0, Math.min(255, g));
+      b = Math.max(0, Math.min(255, b));
+      return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+    function applyBall() {
+      const style = $("ballStyle").value;
+      const presets = {
+        classic: "#ffffff",
+        yellow: "#f5d000",
+        orange: "#f97316",
+        red: "#ef4444",
+        blue: "#3b82f6",
+        green: "#22c55e",
+        pink: "#f472b6"
+      };
+      const color = style === "custom" || style === "image" ? ($("ballColor").value || "#ffffff") : (presets[style] || "#ffffff");
+      document.documentElement.style.setProperty("--ball-light", hexShade(color, 40));
+      document.documentElement.style.setProperty("--ball-mid", color);
+      document.documentElement.style.setProperty("--ball-dark", hexShade(color, -50));
+      document.documentElement.style.setProperty("--ball-pattern", style === "classic" ? "#111111" : hexShade(color, -90));
+      const img = $("ballImg").value.trim();
+      if (style === "image" && img) {
+        document.documentElement.style.setProperty("--ball-img", "url('" + img.replace(/'/g, "") + "')");
+        document.documentElement.style.setProperty("--ball-pattern-op", "0");
+      } else {
+        document.documentElement.style.setProperty("--ball-img", "none");
+        document.documentElement.style.setProperty("--ball-pattern-op", "0.55");
+      }
+    }
+
+    function goalBurst() {
+      if (!$("fxGoal").checked || $("fxStyle").value === "off") return;
+      const count = $("vCount");
+      count.classList.remove("pop");
+      void count.offsetWidth;
+      count.classList.add("pop");
+      const box = $("burst");
+      box.innerHTML = "";
+      const colors = ["#fff", $("accent").value, "#86efac", "#fbbf24"];
+      for (let i = 0; i < 18; i++) {
+        const s = document.createElement("span");
+        const ang = (Math.PI * 2 * i) / 18;
+        s.style.left = "50%";
+        s.style.top = "48%";
+        s.style.background = colors[i % colors.length];
+        s.style.setProperty("--x", Math.cos(ang) * (80 + Math.random() * 70) + "px");
+        s.style.setProperty("--y", Math.sin(ang) * (40 + Math.random() * 50) + "px");
+        box.appendChild(s);
+      }
+    }
+
+    function setLocalCount(n) {
+      $("vCount").dataset.live = "";
+      $("vCount").textContent = formatPT(Number(n) || 0);
+    }
+
+    function setYoutubeCount(n) {
+      const val = Number(n);
+      if (!Number.isFinite(val)) return;
+      $("vCount").dataset.live = "1";
+      $("vCount").textContent = formatPT(val);
+      const wentUp = lastYoutubeCount != null && val > lastYoutubeCount;
+      if (wentUp) goalBurst();
+      lastYoutubeCount = val;
+    }
+
+    function save() {
+      const data = {};
+      fields.forEach((k) => data[k] = $(k).value);
+      data.fxGoal = $("fxGoal").checked;
+      data.musicLoop = $("musicLoop").checked;
+      data.musicOn = $("musicOn").checked;
+      localStorage.setItem("futcom-live", JSON.stringify(data));
+      $("msg").textContent = "Guardado neste browser.";
+      apply();
+      syncMusic();
+      refreshCount();
+    }
+
+    function load() {
+      try {
+        const data = JSON.parse(localStorage.getItem("futcom-live") || "{}");
+        fields.forEach((k) => { if (data[k] != null) $(k).value = data[k]; });
+        if (data.fxGoal === false) $("fxGoal").checked = false;
+        if (data.musicLoop === false) $("musicLoop").checked = false;
+        if (data.musicOn === false) $("musicOn").checked = false;
+      } catch (e) {}
+      apply();
+      syncMusic();
+    }
+
+    function apiErrorText(data) {
+      if (data && data.error && data.error.message) return String(data.error.message);
+      return "";
+    }
+
+    async function refreshCount() {
+      const id = $("channelId").value.trim();
+      const key = $("apiKey").value.trim();
+      if (!id.startsWith("UC") || key.length < 20) {
+        $("apiState").textContent = "Contador: número local (falta ID do canal ou chave API)";
+        lastYoutubeCount = null;
+        setLocalCount($("fallback").value || 0);
+        return;
+      }
+      try {
+        const url = "https://www.googleapis.com/youtube/v3/channels?part=statistics&id=" + encodeURIComponent(id) + "&key=" + encodeURIComponent(key);
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.error) throw new Error(apiErrorText(data) || "erro da API");
+        const stats = data.items && data.items[0] && data.items[0].statistics;
+        if (!stats) throw new Error("canal não encontrado — confere o ID (começa por UC)");
+        if (stats.hiddenSubscriberCount === true || stats.hiddenSubscriberCount === "true") {
+          throw new Error("o canal tem inscritos ocultos no YouTube Studio");
+        }
+        const raw = stats.subscriberCount;
+        if (raw == null || raw === "") throw new Error("a API não devolveu inscritos");
+        const agora = new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        $("apiState").textContent = "YouTube: " + formatPT(raw) + " inscritos · " + agora;
+        setYoutubeCount(raw);
+      } catch (e) {
+        $("apiState").textContent = "API falhou (" + (e.message || "erro") + ") · número local";
+        lastYoutubeCount = null;
+        setLocalCount($("fallback").value || 0);
+      }
+    }
+
+    function setStream(on) {
+      document.body.classList.toggle("stream", on);
+      history.replaceState(null, "", on ? "?live=1" : location.pathname);
+    }
+
+    fields.forEach((k) => $(k).addEventListener("input", apply));
+    $("fxGoal").addEventListener("change", apply);
+    $("save").onclick = save;
+    $("refresh").onclick = refreshCount;
+    $("streamBtn").onclick = () => setStream(true);
+    $("demoGoal").onclick = goalBurst;
+    $("musicBtn").onclick = toggleMusic;
+    $("musicUrl").addEventListener("change", syncMusic);
+    $("musicVol").addEventListener("input", syncMusic);
+    $("musicLoop").addEventListener("change", syncMusic);
+    $("musicOn").addEventListener("change", () => {
+      if ($("musicOn").checked) playMusic();
+      else { $("bgm").pause(); $("musicBtn").textContent = "Tocar música"; }
+    });
+    document.addEventListener("click", function once() {
+      if ($("musicOn").checked && $("bgm").paused) playMusic();
+      document.removeEventListener("click", once);
+    });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") setStream(false); });
+    if (new URLSearchParams(location.search).get("live") === "1") setStream(true);
+    load();
+    refreshCount();
+    setInterval(refreshCount, 20000);
+    syncMusic();
+    startMusicAuto();
+    $("bgm").addEventListener("ended", () => {
+      if ($("musicOn").checked) {
+        $("bgm").currentTime = 0;
+        playMusic();
+      }
+    });
+  </script>
+</body>
+</html>
