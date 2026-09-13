@@ -29,7 +29,7 @@
     .panel h1 { font-size: 16px; margin-bottom: 4px; }
     .panel p { color: #9a9a9a; font-size: 12px; margin-bottom: 14px; line-height: 1.4; }
     label { display: block; font-size: 11px; color: #aaa; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: .4px; }
-    input[type="text"], input[type="number"], input[type="url"], select {
+    input[type="text"], input[type="number"], input[type="url"], input[type="range"], select {
       width: 100%;
       background: #101010;
       color: #fff;
@@ -38,6 +38,7 @@
       padding: 8px 10px;
       font-size: 14px;
     }
+    input[type="range"] { padding: 6px 0; }
     .colors { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .check { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: #ddd; text-transform: none; letter-spacing: 0; }
     .check input { width: auto; }
@@ -236,10 +237,6 @@
   </style>
 </head>
 <body>
-  <!-- MÚSICA DE FUNDO FUTCOM -->
-<audio id="musicaFundo" autoplay loop preload="auto">
-  <source src="musica.mp3" type="audio/mpeg">
-</audio>
   <aside class="panel">
     <h1>Personalizar tela FUTCOM</h1>
     <p>Edita à esquerda. À direita vês a live. Podes ligar animações de futebol e o contador de inscritos.</p>
@@ -251,7 +248,7 @@
     <input id="logoText" type="text" value="FF" maxlength="3" />
 
     <label>URL do logo (opcional)</label>
-    <input id="logoUrl" type="url" placeholder="https://.../logo.png" />
+    <input id="logoUrl" type="url" placeholder="https://.../logo.png" value="channels4_profile-photoaidcom-cropped.jpg" />
 
     <label>Texto debaixo do número</label>
     <input id="label" type="text" value="Inscritos" />
@@ -287,6 +284,15 @@
       <div><label>Ponto azul</label><input id="status" type="color" value="#3ea6ff" /></div>
     </div>
 
+    <label>Música de fundo (ficheiro no GitHub)</label>
+    <input id="musicUrl" type="url" value="quietphase-ambient-calm-491578.mp3" />
+
+    <label>Volume da música (<span id="volLabel">35%</span>)</label>
+    <input id="musicVol" type="range" min="0" max="100" value="35" />
+
+    <label class="check"><input id="musicLoop" type="checkbox" checked /> Repetir em loop</label>
+    <label class="check"><input id="musicOn" type="checkbox" checked /> Música ligada</label>
+
     <label>ID do canal YouTube</label>
     <input id="channelId" type="text" placeholder="UCxxxxxxxxxxxxxxxxxxxxxx" />
 
@@ -298,7 +304,9 @@
       <button class="ghost" id="streamBtn">Modo live</button>
       <button class="ghost" id="refresh">Atualizar agora</button>
       <button class="ghost" id="demoGoal">Testar golo</button>
+      <button class="ghost" id="musicBtn">Tocar música</button>
     </div>
+    <audio id="bgm" preload="auto" playsinline></audio>
     <div class="ok" id="msg"></div>
     <div class="warn">No modo live, Esc volta ao editor. Usa ecrã inteiro na transmissão.</div>
   </aside>
@@ -340,8 +348,51 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    const fields = ["brand","logoText","logoUrl","label","statusText","goal","ticker","fallback","bg","top","text","muted","accent","status","channelId","apiKey","fxStyle"];
+    const fields = ["brand","logoText","logoUrl","label","statusText","goal","ticker","fallback","bg","top","text","muted","accent","status","channelId","apiKey","fxStyle","musicUrl","musicVol"];
     let lastCount = null;
+    const DEFAULT_MUSIC = "quietphase-ambient-calm-491578.mp3";
+
+    function syncMusic() {
+      const audio = $("bgm");
+      const src = ($("musicUrl").value.trim() || DEFAULT_MUSIC);
+      const abs = new URL(src, location.href).href;
+      if (audio.dataset.src !== abs) {
+        audio.src = src;
+        audio.dataset.src = abs;
+      }
+      audio.loop = $("musicLoop").checked;
+      audio.volume = Math.max(0, Math.min(1, Number($("musicVol").value || 35) / 100));
+      $("volLabel").textContent = Math.round(audio.volume * 100) + "%";
+      if (!$("musicOn").checked) {
+        audio.pause();
+        $("musicBtn").textContent = "Tocar música";
+      }
+    }
+
+    function playMusic() {
+      $("musicOn").checked = true;
+      syncMusic();
+      const audio = $("bgm");
+      const tryPlay = audio.play();
+      if (tryPlay && tryPlay.catch) {
+        tryPlay.then(() => { $("musicBtn").textContent = "Parar música"; $("msg").textContent = "Música a tocar."; })
+          .catch(() => { $("msg").textContent = "Clica em «Tocar música» — o browser bloqueia autoplay."; $("musicBtn").textContent = "Tocar música"; });
+      } else {
+        $("musicBtn").textContent = "Parar música";
+      }
+    }
+
+    function toggleMusic() {
+      const audio = $("bgm");
+      if (!audio.paused) {
+        audio.pause();
+        $("musicOn").checked = false;
+        $("musicBtn").textContent = "Tocar música";
+        $("msg").textContent = "Música parada.";
+        return;
+      }
+      playMusic();
+    }
 
     function formatPT(n) { return Number(n).toLocaleString("pt-PT"); }
 
@@ -408,9 +459,12 @@
       const data = {};
       fields.forEach((k) => data[k] = $(k).value);
       data.fxGoal = $("fxGoal").checked;
+      data.musicLoop = $("musicLoop").checked;
+      data.musicOn = $("musicOn").checked;
       localStorage.setItem("futcom-live", JSON.stringify(data));
       $("msg").textContent = "Guardado neste browser.";
       apply();
+      syncMusic();
       refreshCount();
     }
 
@@ -419,8 +473,11 @@
         const data = JSON.parse(localStorage.getItem("futcom-live") || "{}");
         fields.forEach((k) => { if (data[k] != null) $(k).value = data[k]; });
         if (data.fxGoal === false) $("fxGoal").checked = false;
+        if (data.musicLoop === false) $("musicLoop").checked = false;
+        if (data.musicOn === false) $("musicOn").checked = false;
       } catch (e) {}
       apply();
+      syncMusic();
     }
 
     async function refreshCount() {
@@ -461,11 +518,24 @@
     $("refresh").onclick = refreshCount;
     $("streamBtn").onclick = () => setStream(true);
     $("demoGoal").onclick = goalBurst;
+    $("musicBtn").onclick = toggleMusic;
+    $("musicUrl").addEventListener("change", syncMusic);
+    $("musicVol").addEventListener("input", syncMusic);
+    $("musicLoop").addEventListener("change", syncMusic);
+    $("musicOn").addEventListener("change", () => {
+      if ($("musicOn").checked) playMusic();
+      else { $("bgm").pause(); $("musicBtn").textContent = "Tocar música"; }
+    });
+    document.addEventListener("click", function once() {
+      if ($("musicOn").checked && $("bgm").paused) playMusic();
+      document.removeEventListener("click", once);
+    });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") setStream(false); });
     if (new URLSearchParams(location.search).get("live") === "1") setStream(true);
     load();
     refreshCount();
     setInterval(refreshCount, 60000);
+    syncMusic();
   </script>
 </body>
 </html>
